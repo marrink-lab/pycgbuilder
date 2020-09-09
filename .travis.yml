@@ -5,14 +5,6 @@ language: python
 
 cache: pip
 
-env:
-  - TOXENV=py35
-  - TOXENV=py34
-  - TOXENV=py33
-  - TOXENV=py27
-  - TOXENV=py26
-  - TOXENV=pypy
-
 # command to install dependencies, e.g. pip install -r requirements.txt --use-mirrors
 install: 
     - pip install --upgrade setuptools pip
@@ -60,7 +52,7 @@ jobs:
             provider: pypi
             user: pckroon
             password:
-              secure: 
+              secure: "BX61qcAQeYfMAELVrLB5SEq2JMXBSU+XTrK7ZjqQodtSnVOlnH6yUAZCWuXCni7XvQ30efO2toD9HCOpzfM19Dbe/64+2pwpZTxeHqSLPRmGGkfy18N5TXQcLNZfiEO/XdYTr2S9E3d5CXniKZ8PP6ivN9JTek0Mv4PS4yFes+ILRgBdCNVdS2GQI/2hXwzLgBzXwMqG6j2SIUk8aR4rBjnSXZ4xiJAFlVGL2ert7pWEat/mVGsMNUc7HyDUrpb27KCP3v5innulXY/gE0D2LvEUPHkuNqkZ8d9PxBsh39QMiulaJTR5CtB/Q1e/C/BZi9YuXLc2/bIFo0x5uLu053okTJMOFKP4+XJ2dIsvQovPslbPyS9ZuBIJjGfvpO6LKCQTkmDni00O/V+0af8i3Tt3n/gAvPm1Ozpz8gyJbelweJc1Ip0xDpgw9d/NpsPnIKzuT4Ktt9x6CzBt+6/OAehRtCcii7cF3pnA5s9ilqaNTkLjqdVQUQ1Hf4CErtcVhROluMYaFKtZ3ONl+40zNGyWAPnvfZsQVYCUsqn5DymB50J9wpTAn1nxl03AdK4pbxDRTVTc0/5zlLrkB8BpSW1F1wLtynaclcqJUGJSf8jiROtBFJb2eBgldchryWWwOrUTWXO+6etee3F3+qRuEg3baw9ZG4zPMp9Nvp8iA5g=" 
             on:
               tags: true
 
