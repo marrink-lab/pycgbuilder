@@ -1,0 +1,7 @@
+-r prod.txt
+
+bumpversion
+tox
+coverage
+Sphinx
+

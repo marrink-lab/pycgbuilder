@@ -1,0 +1,70 @@
+# Config file for automatic testing at travis-ci.org
+# This file will be regenerated if you run travis_pypi_setup.py
+
+language: python
+
+cache: pip
+
+env:
+  - TOXENV=py35
+  - TOXENV=py34
+  - TOXENV=py33
+  - TOXENV=py27
+  - TOXENV=py26
+  - TOXENV=pypy
+
+# command to install dependencies, e.g. pip install -r requirements.txt --use-mirrors
+install: 
+    - pip install --upgrade setuptools pip
+    - pip install --upgrade -r requirements/test.txt
+    - pip install --upgrade .
+before_script:
+    - pytest --version
+# command to run tests, e.g. python setup.py test
+script:
+    - pytest -vv --cov
+after_success:
+    - if [[ ${COVERALLS} == true ]]; then coveralls; fi
+
+branches:
+  only:
+  - master
+  - /^v(?<major>0|[1-9]\d*)\.(?<minor>0|[1-9]\d*)\.(?<patch>0|[1-9]\d*)(?:-(?<prerelease>(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+(?<buildmetadata>[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/ # SemVer tags (https://github.com/semver/semver/issues/232#issuecomment-405596809)
+
+jobs:
+    fast_finish: true
+    allow_failures:
+        - python: "3.6-dev"
+        - python: "3.7-dev"
+        - python: "3.8-dev"
+    include:
+        - python: "3.6"
+        - python: "3.6-dev"
+        - python: "3.7"
+        - python: "3.7-dev"
+        - python: "3.8"
+        - python: "3.8-dev"
+        - python: "3.9-dev"
+
+        - stage: pylint
+          python: "3.8"
+          script:
+            - pylint --disable=fixme --fail-under=9.5 pycgbuilder
+          after_success: skip
+
+        - stage: deploy
+          python: "3.8"
+          before_script: skip
+          script: skip
+          deploy:
+            provider: pypi
+            user: pckroon
+            password:
+              secure: 
+            on:
+              tags: true
+
+
+
+
+
