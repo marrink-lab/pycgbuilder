@@ -62,6 +62,7 @@ class PagedWindow(QMainWindow):
 class CGBuilder(PagedWindow):
     def __init__(self):
         super().__init__()
+        self.setWindowTitle('PyCGBuilder')
         mol_picker = MoleculeWidget(self)
         self.pages.addWidget(mol_picker)
 
@@ -73,7 +74,6 @@ class CGBuilder(PagedWindow):
 
         self.pages.setCurrentIndex(0)
         self._toggle_buttons()
-        mapper.molecule = read_smiles('OC[C@H]1OC(O)[C@H](O)[C@@H](O)[C@@H]1O')
 
     def _next_page(self):
         value = self.pages.currentWidget().get_value()
