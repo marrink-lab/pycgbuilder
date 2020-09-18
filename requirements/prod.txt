@@ -3,3 +3,5 @@ pyqt5
 networkx
 pysmiles
 vermouth
+numpy
+scipy
