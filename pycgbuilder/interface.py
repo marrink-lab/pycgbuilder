@@ -1,159 +1,90 @@
-from matplotlib.backend_bases import MouseButton
-from matplotlib.figure import Figure
-from matplotlib.cm import get_cmap
-from matplotlib.backends.qt_compat import QtCore, QtWidgets, QtGui
-from matplotlib.backends.backend_qt5agg import (
-    FigureCanvas, NavigationToolbar2QT as NavigationToolbar
-)
+from PyQt5.QtCore import *
+from PyQt5.QtWidgets import *
+from PyQt5.QtGui import *
 
-from vermouth.processors import MakeBonds
-from vermouth.system import System
-from vermouth.pdb import read_pdb
-from pysmiles import read_smiles, remove_explicit_hydrogens
-import networkx as nx
+from pysmiles import read_smiles
 
-from .embed_molecule import vsepr_layout
-from .draw_mol import draw_molecule
+from .mapping_widget import MappingWidget
+from .molecule_widget import MoleculeWidget
+from .writer_widget import WriterWidget
 
-class ApplicationWindow(QtWidgets.QMainWindow):
+
+class PagedWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.molecule = nx.Graph()
-        self.mapping = {}
+        widg = QWidget()
+        layout = QVBoxLayout(widg)
+        self.pages = QStackedWidget()
 
-        self._main = QtWidgets.QWidget(self)
-        self.setCentralWidget(self._main)
-
-        self.page_builders = [self.molecule_selector, self.molecule_mapper]
-        self.validators = [self.validate_mol, self.validate_mapping]
-        self.pages = QtWidgets.QStackedWidget(self)
-        for builder in self.page_builders:
-            self.pages.addWidget(builder())
-
-        layout = QtWidgets.QVBoxLayout()
         layout.addWidget(self.pages)
 
-        button_bar = QtWidgets.QHBoxLayout()
-        self.back_button = QtWidgets.QPushButton('Back')
-        self.next_button = QtWidgets.QPushButton('Next')
-        self.back_button.clicked.connect(self._prev_page)
-        self.next_button.clicked.connect(self._next_page)
-        # self.back_button.setEnabled(False)
-        # self.next_button.setEnabled(False)
-        button_bar.addWidget(self.back_button)
-        button_bar.addWidget(self.next_button)
+        button_layout = QToolBar()
+        self.back = QAction('Back', self, icon=self.style().standardIcon(QStyle.SP_ArrowBack))
+        self.next = QAction('Next', self, icon=self.style().standardIcon(QStyle.SP_ArrowForward))
+        self.back.triggered.connect(self._prev_page)
+        self.next.triggered.connect(self._next_page)
+        button_layout.addAction(self.back)
+        sep = QWidget()
+        sep.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        button_layout.addWidget(sep)
+        button_layout.addAction(self.next)
+        button_layout.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
+        self.toolbar = button_layout
+        # button_layout.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.Fixed)
+        layout.addWidget(button_layout, alignment=Qt.AlignBottom)
 
-        layout.addLayout(button_bar)
-        self._main.setLayout(layout)
-        self.show()
+        self._toggle_buttons()
+        widg.setLayout(layout)
+        self.setCentralWidget(widg)
+        # self.setStatusBar(QStatusBar(self))
 
     def _next_page(self):
-        idx = self.pages.currentIndex()
-        if self.validators[idx]():
-            self.pages.setCurrentIndex(idx + 1)
+        self.pages.setCurrentIndex(self.pages.currentIndex() + 1)
+        self._toggle_buttons()
 
     def _prev_page(self):
-        idx = self.pages.currentIndex()
-        self.pages.setCurrentIndex(idx - 1)
+        self.pages.setCurrentIndex(self.pages.currentIndex() - 1)
+        self._toggle_buttons()
 
-    def molecule_selector(self):
-        widg = QtWidgets.QWidget()
-        layout = QtWidgets.QVBoxLayout(widg)
+    def _toggle_buttons(self):
+        current_idx = self.pages.currentIndex()
+        self.back.setEnabled(current_idx != 0)
+        self.next.setEnabled(current_idx != self.pages.count() - 1)
 
-        file_layout = QtWidgets.QHBoxLayout()
-        self._pth_widget = QtWidgets.QLineEdit()
-        browse_button = QtWidgets.QPushButton('Browse')
-        browse_button.clicked.connect(self._select_file)
-        file_layout.addWidget(QtWidgets.QLabel('PDB file: '))
-        file_layout.addWidget(self._pth_widget)
-        file_layout.addWidget(browse_button)
+    def set_final_page(self):
+        self.back.setEnabled(False)
+        self.next.setIcon(self.style().standardIcon(QStyle.SP_DialogApplyButton))
+        self.next.triggered.connect(self.close)
+        self.next.setText('Finish')
+        self.next.setEnabled(True)
 
-        smiles_layout = QtWidgets.QHBoxLayout()
-        smiles_layout.addWidget(QtWidgets.QLabel('SMILES: '))
-        self._smiles_widget = QtWidgets.QLineEdit()
-        smiles_layout.addWidget(self._smiles_widget)
 
-        layout.addLayout(file_layout)
-        layout.addLayout(smiles_layout)
-        self._pth_widget.setText('/home/peterkroon/python/molecules/genistein.pdb')
-        self._smiles_widget.setText('C1=CC(=CC=C1C2=COC3=CC(=CC(=C3C2=O)O)O)O')
+class CGBuilder(PagedWindow):
+    def __init__(self):
+        super().__init__()
+        mol_picker = MoleculeWidget(self)
+        self.pages.addWidget(mol_picker)
 
-        return widg
+        mapper = MappingWidget(self)
+        self.pages.addWidget(mapper)
 
-    def _select_file(self):
-        filename = QtWidgets.QFileDialog.getOpenFileName(filter="PDB file (*.pdb)")
-        filename = filename[0]
-        self._pth_widget.setText(filename)
+        writer = WriterWidget(self)
+        self.pages.addWidget(writer)
 
-    def validate_mol(self):
-        filename = self._pth_widget.text()
-        if filename:
-            try:
-                pdb_mol = read_pdb(filename)
-            except Exception as err:
-                self._pth_widget.setText('')
-                print(err)
-                return False
-            pdb_mol = pdb_mol[0]
-            if not pdb_mol.edges:
-                system = System()
-                system.add_molecule(pdb_mol)
-                MakeBonds(allow_name=False).run_system(system)
-        else:
-            pdb_mol = None
-        smiles = self._smiles_widget.text()
-        if smiles:
-            try:
-                smiles_mol = read_smiles(smiles)
-            except Exception as err:
-                # self._smiles_widget.setText('')
-                print(err)
-                return False
-        else:
-            smiles_mol = None
+        self.pages.setCurrentIndex(0)
+        self._toggle_buttons()
+        mapper.molecule = read_smiles('OC[C@H]1OC(O)[C@H](O)[C@@H](O)[C@@H]1O')
 
-        if pdb_mol and smiles_mol:
-            remove_explicit_hydrogens(pdb_mol)
-            gm = nx.isomorphism.GraphMatcher(pdb_mol, smiles_mol,
-                                             nx.isomorphism.categorical_node_match('element', None))
-            match = next(gm.isomorphisms_iter(), {})
-            if not match:
-                print('Smiles and PDB molecule are not isomorphic!')
-                return False
-            for pdb_idx, smi_idx in match.items():
-                smiles_mol.nodes[smi_idx].update(pdb_mol.nodes[pdb_idx])
-                self.molecule = smiles_mol
-        self.molecule = pdb_mol or smiles_mol
-        if not self.molecule:
-            self.molecule = None
-            return False
-        return True
+    def _next_page(self):
+        value = self.pages.currentWidget().get_value()
+        if value:
+            super()._next_page()
+            self.pages.currentWidget().set_value(value)
 
-    def molecule_mapper(self):
-        widg = QtWidgets.QWidget()
-        layout = QtWidgets.QVBoxLayout(widg)
-
-        self.figure = Figure()
-        canvas = FigureCanvas(self.figure)
-        canvas.mpl_connect('button_press_event', self._click_canvas)
-        ax = canvas.figure.subplots()
-        # self.addToolBar(NavigationToolbar(canvas, self))
-        layout.addWidget(canvas)
-        print(repr(self.molecule))
-        pos = vsepr_layout(self.molecule)
-        draw_molecule(self.molecule, pos=pos, ax=ax)
-        ax.autoscale(True)
-        return widg
-
-    def validate_mapping(self):
-        return True
-
-    def _click_canvas(self, mpl_event):
-        pass
 
 if __name__ == '__main__':
     import sys
-    qapp = QtWidgets.QApplication(sys.argv)
-    app = ApplicationWindow()
+    qapp = QApplication(sys.argv)
+    app = CGBuilder()
     app.show()
     qapp.exec_()
