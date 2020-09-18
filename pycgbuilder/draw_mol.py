@@ -63,6 +63,8 @@ def draw_molecule(graph, clusters=None, labels=None, edge_widths=None, pos=None,
     edges = []
     arom_edges = []
     for idx, jdx, order in graph.edges(data='order'):
+        if not order:
+            order = 1
         if order == 1.5:
             tmp = make_edge(pos[idx], pos[jdx], order)
             arom_edges.append(tmp[0])

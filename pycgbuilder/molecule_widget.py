@@ -36,9 +36,6 @@ class MoleculeWidget(QWidget):
         layout.addLayout(smiles_layout)
         layout.addWidget(self.hydrogen_checkbox)
 
-        self._pth_widget.setText('/home/peterkroon/python/molecules/genistein.pdb')
-        self._smiles_widget.setText('C1=CC(=CC=C1C2=COC3=CC(=CC(=C3C2=O)O)O)O')
-
     def _select_file(self):
         filename = QFileDialog.getOpenFileName(filter="PDB file (*.pdb)")
         filename = filename[0]
@@ -61,6 +58,8 @@ class MoleculeWidget(QWidget):
                 system = System()
                 system.add_molecule(pdb_mol)
                 MakeBonds(allow_name=False).run_system(system)
+            if not self.hydrogen_checkbox.checkState():
+                remove_explicit_hydrogens(pdb_mol)
         else:
             pdb_mol = None
         smiles = self._smiles_widget.text()
@@ -73,17 +72,16 @@ class MoleculeWidget(QWidget):
                 dialog.exec_()
                 self._smiles_widget.setText('')
                 return False
-            else:
-                smiles_mol.graph['smiles'] = smiles
-                smiles_mol.graph['name'] = smiles
+
+            smiles_mol.graph['smiles'] = smiles
+            smiles_mol.graph['name'] = smiles
+            if self.hydrogen_checkbox.checkState():
+                add_explicit_hydrogens(smiles_mol)
+
         else:
             smiles_mol = None
 
         if pdb_mol and smiles_mol:
-            if self.hydrogen_checkbox.checkState():
-                add_explicit_hydrogens(smiles_mol)
-            else:
-                remove_explicit_hydrogens(pdb_mol)
             gm = nx.isomorphism.GraphMatcher(pdb_mol, smiles_mol,
                                              nx.isomorphism.categorical_node_match('element', None))
             match = next(gm.isomorphisms_iter(), {})

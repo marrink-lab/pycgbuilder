@@ -16,11 +16,11 @@ from .draw_mol import draw_molecule
 import networkx as nx
 
 EMBEDDINGS = {
+    'Kamada Kawai': nx.kamada_kawai_layout,
     'VSEPR': vsepr_layout,
     'Spring': nx.spring_layout,
     'Spectral': nx.spectral_layout,
     'Planar': nx.planar_layout,
-    'Kamada Kawai': nx.kamada_kawai_layout,
 }
 
 
