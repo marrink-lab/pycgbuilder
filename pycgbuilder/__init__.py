@@ -4,6 +4,6 @@ __author__ = 'Peter C Kroon'
 __email__ = 'p.c.kroon@rug.nl'
 __version__ = '0.1.0'
 
-from .pycgbuilder import Pycgbuilder
+from .interface import CGBuilder
 
-__all__ = ['Pycgbuilder']
+__all__ = ['CGBuilder']
