@@ -29,8 +29,6 @@ class PagedWindow(QMainWindow):
         button_layout.addWidget(sep)
         button_layout.addAction(self.next)
         button_layout.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
-        self.toolbar = button_layout
-        # button_layout.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.Fixed)
         layout.addWidget(button_layout, alignment=Qt.AlignBottom)
 
         self._toggle_buttons()
