@@ -14,6 +14,7 @@ from .embed_molecule import vsepr_layout
 from .draw_mol import draw_molecule
 
 import networkx as nx
+import numpy as np
 
 EMBEDDINGS = {
     'Kamada Kawai': nx.kamada_kawai_layout,
@@ -36,6 +37,11 @@ class MappingView(FigureCanvas):
         self._molecule = nx.Graph()
         self._model = MappingModel(self._molecule)
         self._selectionmodel = QItemSelectionModel(self._model)
+        self.show_mapping = True
+        self.ax.set_aspect(1)
+        self.ax.set_axis_off()
+        self.ax.autoscale(False)
+        self.draw()
 
     @property
     def mapping(self):
@@ -58,12 +64,14 @@ class MappingView(FigureCanvas):
         self._model = qtmodel
         self.molecule = self._model.molecule
         self._model.dataChanged.connect(self.redraw)
+        self._model.modelReset.connect(self.redraw)
 
     def setModel(self, qtmodel):
         self.model = qtmodel
 
     def setSelectionModel(self, qtselectionmodel):
         self._selectionmodel = qtselectionmodel
+        # Redraw the selection border
         self._selectionmodel.selectionChanged.connect(self.redraw)
 
     def selectionModel(self):
@@ -77,8 +85,17 @@ class MappingView(FigureCanvas):
     def molecule(self, new_mol):
         self._molecule = new_mol.copy()
         self._embeddings.clear()
-        self.draw_molecule()
-        self.draw_mapping()
+        self._set_ax_lims()
+        self.redraw()
+
+    def _set_ax_lims(self):
+        positions = np.array(list(self.embedding.values()))
+        if positions.ndim < 2:
+            return
+        min_x, min_y = np.min(positions, axis=0)
+        max_x, max_y = np.max(positions, axis=0)
+        self.ax.set_xlim(min_x - self.atom_radius, max_x + self.atom_radius, emit=False)
+        self.ax.set_ylim(min_y - self.atom_radius, max_y + self.atom_radius, emit=True)
 
     @property
     def current_embedding(self):
@@ -87,8 +104,8 @@ class MappingView(FigureCanvas):
     @current_embedding.setter
     def current_embedding(self, embedding_name):
         self._current_embedding = embedding_name
-        self.draw_molecule()
-        self.draw_mapping()
+        self._set_ax_lims()
+        self.redraw()
 
     def _set_embedding(self, name):
         self.current_embedding = name
@@ -108,19 +125,23 @@ class MappingView(FigureCanvas):
         return self._make_embedding()
 
     def redraw(self, *args):
-        # changed = bottomright.data(role=Qt.UserRole)
-        # self.draw_mapping({k: v for k, v in self.mapping.items() if k in changed})
+        xlim = self.ax.get_xlim()
+        ylim = self.ax.get_ylim()
+        self.ax.cla()
         self.draw_molecule()
-        self.draw_mapping()
+        if self.show_mapping:
+            self.draw_mapping()
+        self.ax.set_axis_off()
+        self.ax.set(xlim=xlim, ylim=ylim)
+        self.draw_idle()
+
+    def hide_mapping(self):
+        self.show_mapping = not self.show_mapping
+        self.redraw()
 
     def draw_molecule(self):
-        self.ax.clear()
         draw_molecule(self.molecule, pos=self.embedding, ax=self.ax,
                       labels=nx.get_node_attributes(self.molecule, 'atomname'))
-        self.ax.set_aspect(1)
-        self.ax.autoscale(True)
-        self.ax.set_axis_off()
-        self.draw_idle()
 
     def draw_mapping(self, mapping=None):
         pos = self.embedding
@@ -141,9 +162,6 @@ class MappingView(FigureCanvas):
                     wedge.set_linewidth(1)
                     wedge.set_linestyle('-')
                     wedge.set_edgecolor('black')
-
-        self.ax.autoscale(True)
-        self.draw_idle()
 
     def _click_canvas(self, mpl_event):
         try:
@@ -180,6 +198,9 @@ class MappingView(FigureCanvas):
 
         idx = self.model.index(bd_idx, 2)
         self._selectionmodel.select(idx, QItemSelectionModel.ClearAndSelect | QItemSelectionModel.Rows)
+
+    def remove_mapping(self):
+        self.model.reset()
 
     def _map(self, n_idx):
         bd_idx = self._selected_bead()
@@ -278,7 +299,6 @@ class MappingModel(QAbstractTableModel):
             self.types.append('__')
             self.mapping.append([])
             self.layoutChanged.emit([QPersistentModelIndex(index.siblingAtRow(row+1))])
-
         if role == Qt.EditRole:
             value = value.strip()
 
@@ -301,18 +321,28 @@ class MappingModel(QAbstractTableModel):
                 self.mapping[row] = sorted(idxs)
             self.dataChanged.emit(index, index, [role])
         elif role == Qt.UserRole and col == 2:
-            if value in self.mapping[row]:
+            if value == -1:
+                self.mapping[row] = []
+            elif value in self.mapping[row]:
                 self.mapping[row].remove(value)
             else:
                 self.mapping[row] = sorted(self.mapping[row] + [value])
             self.dataChanged.emit(index, index, [role])
         return True
 
+    def reset(self):
+        self.beginResetModel()
+        self.mapping = []
+        self.names = []
+        self.types = []
+        self.endResetModel()
+
     def flags(self, index):
         if index.column() == 2:
             return self._atom_flags
         else:
             return Qt.ItemIsEditable | Qt.ItemIsEnabled | Qt.ItemIsSelectable
+
 
 class MappingWidget(QWidget):
     def __init__(self, *args, **kwargs):
@@ -331,8 +361,21 @@ class MappingWidget(QWidget):
 
         self.figure = Figure()
         self.canvas = MappingView(self.figure)
-
         canvas_layout.addWidget(self.canvas)
+
+        canvas_toolbar = NavigationToolbar(self.canvas, self.canvas, False)
+        canvas_toolbar.addSeparator()
+        hide_mapping = QAction('Hide Mapping', self,
+                               icon=self.style().standardIcon(QStyle.SP_DesktopIcon))
+        hide_mapping.triggered.connect(self.canvas.hide_mapping)
+        canvas_toolbar.addAction(hide_mapping)
+
+        remove_mapping = QAction('Remove Mapping', self,
+                                 icon=self.style().standardIcon(QStyle.SP_DialogDiscardButton))
+        remove_mapping.triggered.connect(self.canvas.remove_mapping)
+        canvas_toolbar.addAction(remove_mapping)
+
+        canvas_layout.addWidget(canvas_toolbar, alignment=Qt.AlignBottom)
 
         layout.addLayout(canvas_layout)
 
