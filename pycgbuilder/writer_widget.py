@@ -52,11 +52,38 @@ def write_ndx(filename, cg_mol, stepsize=10):
             node = cg_mol.nodes[bead_idx]
             at_idxs = list(node.get('graph', []))
             file_out.write('[ {} ]\n'.format(node['atomname']))
-            # FIXME: Way too long lines maybe...
             for idx in range(0, len(at_idxs), stepsize):
                 idxs = (at_idx + 1 for at_idx in at_idxs[idx:idx+stepsize])
                 file_out.write(' '.join(map(str, idxs)) + '\n')
             file_out.write('\n')
+
+
+def write_map(filename, cg_mol):
+    aa_nodes = {}
+    aa_to_cg = defaultdict(list)
+    for cg_idx in cg_mol:
+        bead = cg_mol.nodes[cg_idx]
+        aa_graph = bead['graph']
+        for aa_idx in aa_graph:
+            atom = aa_graph.nodes[aa_idx]
+            aa_nodes[aa_idx] = atom
+            aa_to_cg[aa_idx].append(cg_idx)
+    with open(filename, 'w') as file_out:
+        molname = cg_mol.meta['moltype']
+        file_out.write('[ molecule ]\n')
+        file_out.write(molname + '\n')
+        file_out.write('[ martini ]\n')
+        file_out.write(' '.join(cg_mol.nodes[idx]['atomname'] for idx in cg_mol) + '\n')
+        file_out.write('[ mapping ]\n')
+        file_out.write('<FORCE FIELD NAMES>\n')
+        file_out.write('[ atoms ]\n')
+        for aa_idx, atom in sorted(aa_nodes.items(), key=lambda i: i[1]['atomid']):
+            cg_idxs = aa_to_cg[aa_idx]
+            file_out.write('{} {} {}\n'.format(
+                atom['atomid'],
+                atom['atomname'],
+                ' '.join(cg_mol.nodes[cg_idx]['atomname'] for cg_idx in cg_idxs)
+            ))
 
 
 def write_itp(path, cg_mol):
@@ -75,8 +102,9 @@ WRITERS = {
     'ndx': write_ndx,
     'pdb': write_pdb,
     'itp': write_itp,
-    'map': None,
+    'map': write_map,
 }
+
 
 class WriterWidget(QWidget):
     def __init__(self, *args, **kwargs):
