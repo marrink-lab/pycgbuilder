@@ -15,7 +15,6 @@ pycgbuilder
 
 A Qt5 based GUI for making mapping files
 
-* Free software: ISC license
 * Documentation: https://pycgbuilder.readthedocs.org.
 
 Features
