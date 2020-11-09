@@ -2,4 +2,6 @@
 
 tox
 pytest
-
+coverage
+pytest-cov
+pylint
