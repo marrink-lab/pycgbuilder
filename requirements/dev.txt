@@ -2,6 +2,5 @@
 
 bumpversion
 tox
-coverage
 Sphinx
 

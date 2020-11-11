@@ -77,10 +77,10 @@ def write_map(filename, cg_mol):
         file_out.write('[ mapping ]\n')
         file_out.write('<FORCE FIELD NAMES>\n')
         file_out.write('[ atoms ]\n')
-        for aa_idx, atom in sorted(aa_nodes.items(), key=lambda i: i[1]['atomid']):
+        for aa_idx, atom in sorted(aa_nodes.items(), key=lambda i: i[1].get('atomid', i[0])):
             cg_idxs = aa_to_cg[aa_idx]
             file_out.write('{} {} {}\n'.format(
-                atom['atomid'],
+                atom.get('atomid', aa_idx),
                 atom['atomname'],
                 ' '.join(cg_mol.nodes[cg_idx]['atomname'] for cg_idx in cg_idxs)
             ))

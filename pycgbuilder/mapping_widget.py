@@ -10,23 +10,24 @@ from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 
-from .embed_molecule import vsepr_layout
+from .embed_molecule import (
+    vsepr_layout, kamada_kawai_layout, spring_layout, spectral_layout, planar_layout)
 from .draw_mol import draw_molecule
 
 import networkx as nx
 import numpy as np
 
 EMBEDDINGS = {
-    'Kamada Kawai': nx.kamada_kawai_layout,
     'VSEPR': vsepr_layout,
-    'Spring': nx.spring_layout,
-    'Spectral': nx.spectral_layout,
-    'Planar': nx.planar_layout,
+    'Kamada Kawai': kamada_kawai_layout,
+    'Spring': spring_layout,
+    'Spectral': spectral_layout,
+    'Planar': planar_layout,
 }
 
 
 class MappingView(FigureCanvas):
-    def __init__(self, figure, atom_radius=0.05):
+    def __init__(self, figure, atom_radius=0.45):
         super().__init__(figure)
         self.ax = figure.subplots()
         self.mpl_connect('button_press_event', self._click_canvas)

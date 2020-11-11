@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import QApplication
-from .interface import CGBuilder
+from pycgbuilder.interface import CGBuilder
 import sys
 
 
