@@ -1,5 +1,5 @@
 matplotlib
-pyqt5
+pyqt5 >= 5.11
 networkx
 pysmiles
 vermouth
